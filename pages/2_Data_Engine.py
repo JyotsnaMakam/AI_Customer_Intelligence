@@ -7,20 +7,24 @@ import matplotlib.pyplot as plt
 st.title("⚙️ Module 1: The Data Engine (PCA)")
 
 @st.cache_data
-@st.cache_data
-def load_and_clean():
-# We try reading with tab first, then comma if that fails
- try:
-  df = pd.read_csv("data/customer_data.csv", sep="\t")
-# If it only found 1 column, it probably failed to find the tabs
-  if df.shape[1] <= 1:
-   df = pd.read_csv("data/customer_data.csv", sep=",")
- except:
-   st.error("Could not read the file. Check if it's in the data folder!")
-   return pd.DataFrame()
 
-# Clean the data: keep only numbers and remove empty rows
+
+def load_and_clean():
+# Use 'sep=None' and 'engine=python' to let Pandas auto-detect the tabs
+ df = pd.read_csv("data/customer_data.csv", sep=None, engine='python')
+
+# Show exactly what columns Pandas found in the terminal/app logs
+ st.write("Columns found:", list(df.columns))
+
+# Filter for numbers
  df_numeric = df.select_dtypes(include=['number']).dropna()
+
+# Specifically drop ID if it exists
+ if 'ID' in df_numeric.columns:
+  df_numeric = df_numeric.drop(columns=['ID'])
+
+ return df_numeric
+
 
 # Remove 'ID' if it exists because it's not a 'math' feature
  cols_to_drop = ['ID', 'id', 'Id']
