@@ -7,16 +7,26 @@ import matplotlib.pyplot as plt
 st.title("⚙️ Module 1: The Data Engine (PCA)")
 
 @st.cache_data
+@st.cache_data
 def load_and_clean():
-# Loading the Tab-Separated Kaggle file
- df = pd.read_csv("data/customer_data.csv", sep="\t")
+# We try reading with tab first, then comma if that fails
+ try:
+  df = pd.read_csv("data/customer_data.csv", sep="\t")
+# If it only found 1 column, it probably failed to find the tabs
+  if df.shape[1] <= 1:
+   df = pd.read_csv("data/customer_data.csv", sep=",")
+ except:
+   st.error("Could not read the file. Check if it's in the data folder!")
+   return pd.DataFrame()
 
-# Selecting only numerical columns for the math part
+# Clean the data: keep only numbers and remove empty rows
  df_numeric = df.select_dtypes(include=['number']).dropna()
 
-# We drop 'ID' because it's just a label, not a feature
- if 'ID' in df_numeric.columns:
-  df_numeric = df_numeric.drop(columns=['ID'])
+# Remove 'ID' if it exists because it's not a 'math' feature
+ cols_to_drop = ['ID', 'id', 'Id']
+ for col in cols_to_drop:
+  if col in df_numeric.columns:
+    df_numeric = df_numeric.drop(columns=[col])
 
  return df_numeric
 
