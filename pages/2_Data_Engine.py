@@ -1,53 +1,49 @@
 import streamlit as st
 import pandas as pd
-import sqlite3
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 
-st.title("⚙️ The Data Engine: PCA & SVD")
+st.title("⚙️ Module 1: The Data Engine (PCA)")
 
-# 1. Load the Kaggle Data
-@st.cache_data # This keeps the app fast
-def load_kaggle_data():
-# Make sure your file name matches exactly!
-df = pd.read_csv("data/customer_data.csv", sep="\t")
-return df
+@st.cache_data
+def load_and_clean():
+# Loading the Tab-Separated Kaggle file
+ df = pd.read_csv("data/customer_data.csv", sep="\t")
+
+# Selecting only numerical columns for the math part
+ df_numeric = df.select_dtypes(include=['number']).dropna()
+
+# We drop 'ID' because it's just a label, not a feature
+ if 'ID' in df_numeric.columns:
+  df_numeric = df_numeric.drop(columns=['ID'])
+
+ return df_numeric
 
 try:
-df_kaggle = load_kaggle_data()
-st.write("### 📊 Raw Kaggle Data (Preview)")
-st.dataframe(df_kaggle.head())
+ data = load_and_clean()
+ st.write(f"### ✅ Successfully loaded {data.shape[0]} rows and {data.shape[1]} features.")
 
-# 2. Pre-processing: We only take numerical columns for PCA
-# We drop columns with missing values for now to keep the math clean
-data_numeric = df_kaggle.select_dtypes(include=['float64', 'int64']).dropna()
+# 1. Standardization (Scaling)
+ scaler = StandardScaler()
+ scaled_data = scaler.fit_transform(data)
 
-st.write(f"Processing **{data_numeric.shape[1]}** numerical columns into 3 Components...")
+# 2. PCA Implementation
+ pca = PCA(n_components=3)
+ pca_results = pca.fit_transform(scaled_data)
 
-# 3. Standardization (Scaling)
-# PCA is sensitive to scales (Income vs Age). We must scale them first!
-scaler = StandardScaler()
-scaled_data = scaler.fit_transform(data_numeric)
+ pca_df = pd.DataFrame(pca_results, columns=['PC1', 'PC2', 'PC3'])
 
-# 4. PCA Implementation
-pca = PCA(n_components=3)
-pca_data = pca.fit_transform(scaled_data)
+ st.write("### 🚀 Principal Components (Compressed Data)")
+ st.dataframe(pca_df.head())
 
-# Create a DataFrame for the results
-pca_df = pd.DataFrame(data=pca_data, columns=['PC1', 'PC2', 'PC3'])
+# 3. Visualization: The Scree Plot
+ st.write("### 📉 Explained Variance Ratio")
+ fig, ax = plt.subplots()
+ ax.bar(['PC1', 'PC2', 'PC3'], pca.explained_variance_ratio_ * 100)
+ ax.set_ylabel('Percentage of Information Retained (%)')
+ st.pyplot(fig)
 
-st.write("### ✨ PCA Transformation Result")
-st.write("These 3 columns now represent the 'essence' of the original 20+ columns.")
-st.dataframe(pca_df.head())
-
-# 5. The Scree Plot (The Proof)
-st.write("### 📉 Explained Variance (The Math)")
-fig, ax = plt.subplots()
-ax.bar(['PC1', 'PC2', 'PC3'], pca.explained_variance_ratio_)
-ax.set_ylabel('Variance Ratio')
-st.pyplot(fig)
-st.info("The first bar (PC1) usually captures the most important patterns in the data!")
-
-except FileNotFoundError:
-st.error("Missing 'customer_data.csv' in the data folder. Please upload it to continue.")
+except Exception as e:
+ st.error(f"Error: {e}")
+ st.info("Make sure the file is named 'customer_data.csv' in the data folder.")
