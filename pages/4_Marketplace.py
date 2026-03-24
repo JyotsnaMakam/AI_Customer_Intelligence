@@ -8,9 +8,19 @@ from sklearn.cluster import KMeans
 st.title("🛒 Module 3: AI-Powered Marketplace")
 
 def get_user_persona():
-    # 1. Connect to SQL to get YOUR data
+    # 1. Connect to SQL
     conn = sqlite3.connect('data/customer_intelligence.db')
-    sql_df = pd.read_sql_query("SELECT * FROM users ORDER BY id DESC LIMIT 1", conn)
+    
+    # Check if a specific user is "logged in" via Session State
+    # If not, we fallback to the most recent user
+    current_user_id = st.session_state.get('user_id')
+    
+    if current_user_id:
+        query = f"SELECT * FROM users WHERE id = {current_user_id}"
+    else:
+        query = "SELECT * FROM users ORDER BY id DESC LIMIT 1"
+        
+    sql_df = pd.read_sql_query(query, conn)
     conn.close()
     
     if sql_df.empty:
