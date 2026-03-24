@@ -4,96 +4,77 @@ import pandas as pd
 
 st.title("📝 User Registration & Management")
 
-# --- DATABASE FUNCTIONS ---
 def get_connection():
     return sqlite3.connect('data/customer_intelligence.db')
 
-def update_user(user_id, name, age, income):
-    conn = get_connection()
-    c = conn.cursor()
-    c.execute("UPDATE users SET name=?, age=?, income=? WHERE id=?", (name, age, income, user_id))
-    conn.commit()
-    conn.close()
-
-# Function to reset the text boxes
-def reset_form():
-    st.session_state.editing_user_id = None
+# --- SESSION STATE FOR EDITING ---
+if 'edit_id' not in st.session_state:
+    st.session_state.edit_id = None
+if 'edit_name' not in st.session_state:
     st.session_state.edit_name = ""
+if 'edit_age' not in st.session_state:
     st.session_state.edit_age = 18
+if 'edit_income' not in st.session_state:
     st.session_state.edit_income = 0
 
-# --- STEP 1: SESSION STATE INITIALIZATION ---
-if 'editing_user_id' not in st.session_state:
-    reset_form()
+# --- FORM UI ---
+with st.expander("👤 Register or Edit User", expanded=True):
+    name_input = st.text_input("Name", value=st.session_state.edit_name)
+    age_input = st.number_input("Age", min_value=0, value=st.session_state.edit_age)
+    income_input = st.number_input("Annual Income ($)", min_value=0, value=st.session_state.edit_income)
 
-# --- STEP 2: THE FORM UI ---
-with st.container(border=True):
-    # Dynamic header based on mode
-    mode = "Edit Mode 📝" if st.session_state.editing_user_id else "New Registration 🆕"
-    st.subheader(mode)
-    
-    new_name = st.text_input("Name", value=st.session_state.edit_name)
-    new_age = st.number_input("Age", min_value=0, value=st.session_state.edit_age)
-    new_income = st.number_input("Annual Income ($)", min_value=0, value=st.session_state.edit_income)
-
-    col_btn1, col_btn2 = st.columns([1, 4])
-    
-    if st.session_state.editing_user_id:
-        if col_btn1.button("Update ✅", type="primary"):
-            update_user(st.session_state.editing_user_id, new_name, new_age, new_income)
-            st.success(f"Successfully updated {new_name}!")
-            reset_form() # This clears the text boxes
-            st.rerun()
-        if col_btn2.button("Cancel / Clear"):
-            reset_form()
-            st.rerun()
-    else:
-        if col_btn1.button("Register"):
+    if st.session_state.edit_id:
+        if st.button("Update Details ✅", type="primary"):
             conn = get_connection()
             c = conn.cursor()
-            c.execute("INSERT INTO users (name, age, income) VALUES (?,?,?)", (new_name, new_age, new_income))
+            c.execute("UPDATE users SET name=?, age=?, income=? WHERE id=?", 
+                      (name_input, age_input, income_input, st.session_state.edit_id))
             conn.commit()
             conn.close()
-            st.success("User Registered!")
-            reset_form()
+            st.success("User updated!")
+            st.session_state.edit_id = None # Reset
+            st.rerun()
+    else:
+        if st.button("Register User"):
+            conn = get_connection()
+            c = conn.cursor()
+            c.execute("INSERT INTO users (name, age, income) VALUES (?,?,?)", (name_input, age_input, income_input))
+            conn.commit()
+            conn.close()
+            st.success("User registered!")
             st.rerun()
 
-# --- STEP 3: SEARCH & FILTER ---
-st.divider()
-st.subheader("🔍 Search Database")
-search_query = st.text_input("Search by Name", placeholder="Type a name to filter...")
+# --- DATABASE TABLE (The Fix for your Error) ---
+st.subheader("🔎 Search Database")
+search = st.text_input("Type a name to filter...")
 
-# --- STEP 4: DATABASE RECORDS TABLE ---
 conn = get_connection()
 query = "SELECT * FROM users"
+if search:
+    query = f"SELECT * FROM users WHERE name LIKE '%{search}%'"
 df = pd.read_sql_query(query, conn)
 conn.close()
 
-# Apply the filter if search box is not empty
-if search_query:
-    df = df[df['name'].str.contains(search_query, case=False, na=False)]
+# HEADER ROW (FIXED: Using bold markdown instead of .bold() function)
+h_cols = st.columns([1, 2, 1, 2, 2])
+h_cols[0].markdown("**ID**")
+h_cols[1].markdown("**Name**")
+h_cols[2].markdown("**Age**")
+h_cols[3].markdown("**Income**")
+h_cols[4].markdown("**Action**")
 
-if df.empty:
-    st.warning("No users found.")
-else:
-    # Header for the table
-    h_cols = st.columns([1, 2, 1, 2, 2])
-    h_cols[0].bold("ID")
-    h_cols[1].bold("Name")
-    h_cols[2].bold("Age")
-    h_cols[3].bold("Income")
-    h_cols[4].bold("Action")
-
-    for index, row in df.iterrows():
-        cols = st.columns([1, 2, 1, 2, 2])
-        cols[0].write(row['id'])
-        cols[1].write(row['name'])
-        cols[2].write(row['age'])
-        cols[3].write(f"${row['income']:,}")
-        
-        if cols[4].button("Edit 📝", key=f"edit_{row['id']}"):
-            st.session_state.editing_user_id = row['id']
-            st.session_state.edit_name = row['name']
-            st.session_state.edit_age = int(row['age'])
-            st.session_state.edit_income = int(row['income'])
-            st.rerun()
+# DATA ROWS
+for _, row in df.iterrows():
+    r_cols = st.columns([1, 2, 1, 2, 2])
+    r_cols[0].write(row['id'])
+    r_cols[1].write(row['name'])
+    r_cols[2].write(row['age'])
+    r_cols[3].write(f"${row['income']:,}")
+    
+    # When clicked, this fills the form at the top
+    if r_cols[4].button("Edit 📝", key=f"btn_{row['id']}"):
+        st.session_state.edit_id = row['id']
+        st.session_state.edit_name = row['name']
+        st.session_state.edit_age = int(row['age'])
+        st.session_state.edit_income = int(row['income'])
+        st.rerun()
