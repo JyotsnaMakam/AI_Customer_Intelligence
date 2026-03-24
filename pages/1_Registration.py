@@ -40,14 +40,23 @@ with st.expander("👤 Register or Edit User", expanded=True):
             
             st.success("User updated and form cleared!")
             st.rerun()
-    else:
-        if st.button("Register User"):
+        else:
+          if st.button("Register User"):
             conn = get_connection()
             c = conn.cursor()
-            c.execute("INSERT INTO users (name, age, income) VALUES (?,?,?)", (name_input, age_input, income_input))
+            c.execute("INSERT INTO users (name, age, income) VALUES (?,?,?)", 
+                      (name_input, age_input, income_input))
             conn.commit()
             conn.close()
-            st.success("User registered!")
+            
+            # --- THE RESET LOGIC FOR NEW REGISTRATION ---
+            # This clears the boxes immediately after the user is saved
+            st.session_state.edit_id = None
+            st.session_state.edit_name = ""
+            st.session_state.edit_age = 18
+            st.session_state.edit_income = 0
+            
+            st.success("New User Registered and Form Cleared!")
             st.rerun()
 
 # --- DATABASE TABLE ---
