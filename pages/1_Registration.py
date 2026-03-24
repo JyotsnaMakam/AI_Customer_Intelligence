@@ -23,7 +23,7 @@ with st.expander("👤 Register or Edit User", expanded=True):
     age_input = st.number_input("Age", min_value=0, value=st.session_state.edit_age)
     income_input = st.number_input("Annual Income ($)", min_value=0, value=st.session_state.edit_income)
 
-   if st.session_state.edit_id:
+    if st.session_state.edit_id:
         if st.button("Update Details ✅", type="primary"):
             conn = get_connection()
             c = conn.cursor()
@@ -32,16 +32,13 @@ with st.expander("👤 Register or Edit User", expanded=True):
             conn.commit()
             conn.close()
             
-            st.success("User updated successfully!")
-            
             # --- THE RESET LOGIC ---
-            # This clears the boxes so you can register a new user
             st.session_state.edit_id = None
             st.session_state.edit_name = ""
             st.session_state.edit_age = 18
             st.session_state.edit_income = 0
             
-            # Rerun the app to refresh the UI with empty boxes
+            st.success("User updated and form cleared!")
             st.rerun()
     else:
         if st.button("Register User"):
@@ -53,7 +50,7 @@ with st.expander("👤 Register or Edit User", expanded=True):
             st.success("User registered!")
             st.rerun()
 
-# --- DATABASE TABLE (The Fix for your Error) ---
+# --- DATABASE TABLE ---
 st.subheader("🔎 Search Database")
 search = st.text_input("Type a name to filter...")
 
@@ -64,7 +61,7 @@ if search:
 df = pd.read_sql_query(query, conn)
 conn.close()
 
-# HEADER ROW (FIXED: Using bold markdown instead of .bold() function)
+# HEADER ROW
 h_cols = st.columns([1, 2, 1, 2, 2])
 h_cols[0].markdown("**ID**")
 h_cols[1].markdown("**Name**")
@@ -80,7 +77,6 @@ for _, row in df.iterrows():
     r_cols[2].write(row['age'])
     r_cols[3].write(f"${row['income']:,}")
     
-    # When clicked, this fills the form at the top
     if r_cols[4].button("Edit 📝", key=f"btn_{row['id']}"):
         st.session_state.edit_id = row['id']
         st.session_state.edit_name = row['name']
