@@ -32,7 +32,7 @@ with st.expander("👤 Register or Edit User", expanded=True):
             conn.commit()
             conn.close()
             
-            # --- THE RESET LOGIC ---
+            # Reset State
             st.session_state.edit_id = None
             st.session_state.edit_name = ""
             st.session_state.edit_age = 18
@@ -51,7 +51,7 @@ with st.expander("👤 Register or Edit User", expanded=True):
             st.rerun()
 
 # --- DATABASE TABLE ---
-st.subheader("🔎 Search Database")
+st.subheader("🔎 Search & Manage Database")
 search = st.text_input("Type a name to filter...")
 
 conn = get_connection()
@@ -61,28 +61,31 @@ if search:
 df = pd.read_sql_query(query, conn)
 conn.close()
 
-# HEADER ROW
-h_cols = st.columns([1, 2, 1, 2, 2])
+# HEADER ROW (6 columns to fit Delete button)
+h_cols = st.columns([1, 2, 1, 2, 1.5, 1.5])
 h_cols[0].markdown("**ID**")
 h_cols[1].markdown("**Name**")
 h_cols[2].markdown("**Age**")
 h_cols[3].markdown("**Income**")
-h_cols[4].markdown("**Action**")
+h_cols[4].markdown("**Edit**")
+h_cols[5].markdown("**Delete**")
 
 # DATA ROWS
 for _, row in df.iterrows():
-    r_cols = st.columns([1, 2, 1, 2, 2])
+    r_cols = st.columns([1, 2, 1, 2, 1.5, 1.5])
     r_cols[0].write(row['id'])
     r_cols[1].write(row['name'])
     r_cols[2].write(row['age'])
     r_cols[3].write(f"${row['income']:,}")
     
-    if r_cols[4].button("Edit 📝", key=f"btn_{row['id']}"):
+    # EDIT BUTTON
+    if r_cols[4].button("Edit 📝", key=f"edit_{row['id']}"):
         st.session_state.edit_id = row['id']
         st.session_state.edit_name = row['name']
         st.session_state.edit_age = int(row['age'])
         st.session_state.edit_income = int(row['income'])
         st.rerun()
+
     # DELETE BUTTON
     if r_cols[5].button("Del 🗑️", key=f"del_{row['id']}"):
         conn = get_connection()
@@ -91,4 +94,4 @@ for _, row in df.iterrows():
         conn.commit()
         conn.close()
         st.warning(f"Deleted user {row['name']}")
-        st.rerun()    
+        st.rerun()
