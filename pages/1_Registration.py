@@ -2,84 +2,76 @@ import streamlit as st
 import sqlite3
 import pandas as pd
 
+st.title("📝 User Registration & Management")
+
 # --- DATABASE FUNCTIONS ---
-def get_db_connection():
+def get_connection():
     return sqlite3.connect('data/customer_intelligence.db')
 
 def update_user(user_id, name, age, income):
-    conn = get_db_connection()
+    conn = get_connection()
     c = conn.cursor()
-    c.execute("""UPDATE users SET name=?, age=?, income=? WHERE id=?""", 
-              (name, age, income, user_id))
+    c.execute("UPDATE users SET name=?, age=?, income=? WHERE id=?", (name, age, income, user_id))
     conn.commit()
     conn.close()
 
-def save_new_user(name, age, income):
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("INSERT INTO users (name, age, income) VALUES (?, ?, ?)", (name, age, income))
-    conn.commit()
-    new_id = c.lastrowid
-    conn.close()
-    return new_id
+# --- STEP 1: SESSION STATE INITIALIZATION ---
+# This keeps track of which user we are currently editing
+if 'editing_user_id' not in st.session_state:
+    st.session_state.editing_user_id = None
+if 'edit_name' not in st.session_state:
+    st.session_state.edit_name = ""
+if 'edit_age' not in st.session_state:
+    st.session_state.edit_age = 18
+if 'edit_income' not in st.session_state:
+    st.session_state.edit_income = 0
 
-# --- INTERFACE ---
-st.title("📝 Customer Portal")
-
-# 1. Initialize session state
-if 'edit_mode' not in st.session_state:
-    st.session_state.edit_mode = False
-if 'user_id' not in st.session_state:
-    st.session_state.user_id = None
-
-# 2. Logic to pre-fill the form
-# If we are in edit mode, we pull the current values from the session
-default_name = st.session_state.get('user_name', "")
-default_age = st.session_state.get('user_age', 18)
-default_income = st.session_state.get('user_income', 0)
-
-# 3. THE FORM
-with st.form("user_form"):
-    st.subheader("Edit Profile" if st.session_state.edit_mode else "Register New Account")
+# --- STEP 2: THE FORM UI ---
+with st.container(border=True):
+    st.subheader("Edit/Register User")
     
-    new_name = st.text_input("Full Name", value=default_name)
-    new_age = st.number_input("Age", min_value=18, max_value=100, value=default_age)
-    new_income = st.number_input("Annual Income ($)", min_value=0, value=default_income)
-    
-    submit_label = "Update Details" if st.session_state.edit_mode else "Register"
-    submitted = st.form_submit_button(submit_label)
+    # Text boxes are linked to session state values
+    new_name = st.text_input("Name", value=st.session_state.edit_name)
+    new_age = st.number_input("Age", min_value=0, value=st.session_state.edit_age)
+    new_income = st.number_input("Annual Income ($)", min_value=0, value=st.session_state.edit_income)
 
-    if submitted:
-        if st.session_state.edit_mode:
-            # UPDATE existing user
-            update_user(st.session_state.user_id, new_name, new_age, new_income)
-            st.success("Profile Updated!")
-        else:
-            # SAVE new user
-            u_id = save_new_user(new_name, new_age, new_income)
-            st.session_state.user_id = u_id
-            st.success("Registration Successful!")
-        
-        # Save values to session so they "stick" in the textboxes
-        st.session_state.user_name = new_name
-        st.session_state.user_age = new_age
-        st.session_state.user_income = new_income
-        st.session_state.edit_mode = True # Switch to edit mode after registering
-        st.rerun()
+    if st.session_state.editing_user_id:
+        if st.button("Update Details ✅", type="primary"):
+            update_user(st.session_state.editing_user_id, new_name, new_age, new_income)
+            st.success(f"Updated {new_name} successfully!")
+            # Reset the form after update
+            st.session_state.editing_user_id = None
+            st.rerun()
+    else:
+        if st.button("Register New User"):
+            conn = get_connection()
+            c = conn.cursor()
+            c.execute("INSERT INTO users (name, age, income) VALUES (?,?,?)", (new_name, new_age, new_income))
+            conn.commit()
+            conn.close()
+            st.success("User Registered!")
+            st.rerun()
 
-# 4. THE ACTION BUTTONS
+# --- STEP 3: DATABASE RECORDS TABLE ---
 st.divider()
-col1, col2 = st.columns(2)
+st.subheader("🔗 Database Records")
 
-with col1:
-    if st.button("Edit My Info 📝"):
-        st.session_state.edit_mode = True
+conn = get_connection()
+df = pd.read_sql_query("SELECT * FROM users", conn)
+conn.close()
+
+# We display a custom table with 'Edit' buttons
+for index, row in df.iterrows():
+    cols = st.columns([1, 2, 1, 2, 2])
+    cols[0].write(f"#{row['id']}")
+    cols[1].write(row['name'])
+    cols[2].write(row['age'])
+    cols[3].write(f"${row['income']:,}")
+    
+    # The 'Edit' button triggers the auto-fill logic
+    if cols[4].button("Edit 📝", key=f"edit_{row['id']}"):
+        st.session_state.editing_user_id = row['id']
+        st.session_state.edit_name = row['name']
+        st.session_state.edit_age = int(row['age'])
+        st.session_state.edit_income = int(row['income'])
         st.rerun()
-
-with col2:
-    if st.button("View All Registered Users 📊"):
-        conn = get_db_connection()
-        all_users = pd.read_sql_query("SELECT id, name, age, income FROM users", conn)
-        conn.close()
-        st.write("### Database Records")
-        st.dataframe(all_users)
