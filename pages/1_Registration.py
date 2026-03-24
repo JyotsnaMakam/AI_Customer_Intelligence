@@ -83,3 +83,12 @@ for _, row in df.iterrows():
         st.session_state.edit_age = int(row['age'])
         st.session_state.edit_income = int(row['income'])
         st.rerun()
+    # DELETE BUTTON
+    if r_cols[5].button("Del 🗑️", key=f"del_{row['id']}"):
+        conn = get_connection()
+        c = conn.cursor()
+        c.execute("DELETE FROM users WHERE id=?", (row['id'],))
+        conn.commit()
+        conn.close()
+        st.warning(f"Deleted user {row['name']}")
+        st.rerun()    
