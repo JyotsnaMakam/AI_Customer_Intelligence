@@ -40,8 +40,8 @@ with st.expander("👤 Register or Edit User", expanded=True):
             
             st.success("User updated and form cleared!")
             st.rerun()
-        else:
-          if st.button("Register User"):
+    else:
+        if st.button("Register User"):
             conn = get_connection()
             c = conn.cursor()
             c.execute("INSERT INTO users (name, age, income) VALUES (?,?,?)", 
