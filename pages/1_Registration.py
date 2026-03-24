@@ -23,7 +23,7 @@ with st.expander("👤 Register or Edit User", expanded=True):
     age_input = st.number_input("Age", min_value=0, value=st.session_state.edit_age)
     income_input = st.number_input("Annual Income ($)", min_value=0, value=st.session_state.edit_income)
 
-    if st.session_state.edit_id:
+   if st.session_state.edit_id:
         if st.button("Update Details ✅", type="primary"):
             conn = get_connection()
             c = conn.cursor()
@@ -31,8 +31,17 @@ with st.expander("👤 Register or Edit User", expanded=True):
                       (name_input, age_input, income_input, st.session_state.edit_id))
             conn.commit()
             conn.close()
-            st.success("User updated!")
-            st.session_state.edit_id = None # Reset
+            
+            st.success("User updated successfully!")
+            
+            # --- THE RESET LOGIC ---
+            # This clears the boxes so you can register a new user
+            st.session_state.edit_id = None
+            st.session_state.edit_name = ""
+            st.session_state.edit_age = 18
+            st.session_state.edit_income = 0
+            
+            # Rerun the app to refresh the UI with empty boxes
             st.rerun()
     else:
         if st.button("Register User"):
