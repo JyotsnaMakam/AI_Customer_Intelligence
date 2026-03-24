@@ -1,77 +1,85 @@
 import streamlit as st
-import pandas as pd
 import sqlite3
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
-from sklearn.cluster import KMeans
+import pandas as pd
 
-st.title("🛒 Module 3: AI-Powered Marketplace")
+# --- DATABASE FUNCTIONS ---
+def get_db_connection():
+    return sqlite3.connect('data/customer_intelligence.db')
 
-def get_user_persona():
-    # 1. Connect to SQL
-    conn = sqlite3.connect('data/customer_intelligence.db')
-    
-    # Check if a specific user is "logged in" via Session State
-    # If not, we fallback to the most recent user
-    current_user_id = st.session_state.get('user_id')
-    
-    if current_user_id:
-        query = f"SELECT * FROM users WHERE id = {current_user_id}"
-    else:
-        query = "SELECT * FROM users ORDER BY id DESC LIMIT 1"
-        
-    sql_df = pd.read_sql_query(query, conn)
+def update_user(user_id, name, age, income):
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("""UPDATE users SET name=?, age=?, income=? WHERE id=?""", 
+              (name, age, income, user_id))
+    conn.commit()
     conn.close()
+
+def save_new_user(name, age, income):
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("INSERT INTO users (name, age, income) VALUES (?, ?, ?)", (name, age, income))
+    conn.commit()
+    new_id = c.lastrowid
+    conn.close()
+    return new_id
+
+# --- INTERFACE ---
+st.title("📝 Customer Portal")
+
+# 1. Initialize session state
+if 'edit_mode' not in st.session_state:
+    st.session_state.edit_mode = False
+if 'user_id' not in st.session_state:
+    st.session_state.user_id = None
+
+# 2. Logic to pre-fill the form
+# If we are in edit mode, we pull the current values from the session
+default_name = st.session_state.get('user_name', "")
+default_age = st.session_state.get('user_age', 18)
+default_income = st.session_state.get('user_income', 0)
+
+# 3. THE FORM
+with st.form("user_form"):
+    st.subheader("Edit Profile" if st.session_state.edit_mode else "Register New Account")
     
-    if sql_df.empty:
-        return None, None
-
-    # 2. Load the Kaggle data to 'train' the logic
-    df = pd.read_csv("data/customer_data.csv", sep=None, engine='python')
-    df_numeric = df.select_dtypes(include=['number']).dropna()
-    if 'ID' in df_numeric.columns:
-        df_numeric = df_numeric.drop(columns=['ID'])
-
-    # 3. Match the math from the previous pages
-    scaler = StandardScaler()
-    scaled_base = scaler.fit_transform(df_numeric)
-    pca = PCA(n_components=3)
-    pca_base = pca.fit_transform(scaled_base)
-    kmeans = KMeans(n_clusters=4, random_state=42)
-    kmeans.fit(pca_base)
-
-    # 4. Predict YOUR persona
-    # Fill missing columns with averages so the math works
-    for col in df_numeric.columns:
-        if col not in sql_df.columns:
-            sql_df[col] = df_numeric[col].mean()
-            
-    user_scaled = scaler.transform(sql_df[df_numeric.columns])
-    user_pca = pca.transform(user_scaled)
-    cluster_id = kmeans.predict(user_pca)[0]
+    new_name = st.text_input("Full Name", value=default_name)
+    new_age = st.number_input("Age", min_value=18, max_value=100, value=default_age)
+    new_income = st.number_input("Annual Income ($)", min_value=0, value=default_income)
     
-    return sql_df['name'].iloc[0], cluster_id
+    submit_label = "Update Details" if st.session_state.edit_mode else "Register"
+    submitted = st.form_submit_button(submit_label)
 
-name, cluster = get_user_persona()
+    if submitted:
+        if st.session_state.edit_mode:
+            # UPDATE existing user
+            update_user(st.session_state.user_id, new_name, new_age, new_income)
+            st.success("Profile Updated!")
+        else:
+            # SAVE new user
+            u_id = save_new_user(new_name, new_age, new_income)
+            st.session_state.user_id = u_id
+            st.success("Registration Successful!")
+        
+        # Save values to session so they "stick" in the textboxes
+        st.session_state.user_name = new_name
+        st.session_state.user_age = new_age
+        st.session_state.user_income = new_income
+        st.session_state.edit_mode = True # Switch to edit mode after registering
+        st.rerun()
 
-if name:
-    st.write(f"### Welcome back, {name}!")
-    
-    # Define what each cluster gets recommended
-    recommendations = {
-        0: {"label": "💎 Platinum Elite", "items": ["Fine Vintage Wine", "Organic Wagyu Beef", "Premium Caviar"]},
-        1: {"label": "👔 Professional", "items": ["Smart Home Assistant", "Coffee Subscription", "Ergonomic Chair"]},
-        2: {"label": "🛒 Value Seeker", "items": ["Family-Sized Pasta Pack", "Bulk Detergent", "Daily Vitamin Set"]},
-        3: {"label": "🎓 Budget Student", "items": ["Instant Noodle Bundle", "Study Lamp", "Portable Power Bank"]}
-    }
+# 4. THE ACTION BUTTONS
+st.divider()
+col1, col2 = st.columns(2)
 
-    my_group = recommendations.get(cluster)
-    st.info(f"AI Analysis: You are in the **{my_group['label']}** segment.")
-    
-    st.write("#### 🎯 Recommended for Your Lifestyle:")
-    cols = st.columns(3)
-    for i, item in enumerate(my_group['items']):
-        cols[i].metric("Deal", item)
-        cols[i].button(f"Buy {item}", key=i)
-else:
-    st.warning("Please go to the **Registration** page and sign up first to see your persona!")
+with col1:
+    if st.button("Edit My Info 📝"):
+        st.session_state.edit_mode = True
+        st.rerun()
+
+with col2:
+    if st.button("View All Registered Users 📊"):
+        conn = get_db_connection()
+        all_users = pd.read_sql_query("SELECT id, name, age, income FROM users", conn)
+        conn.close()
+        st.write("### Database Records")
+        st.dataframe(all_users)
