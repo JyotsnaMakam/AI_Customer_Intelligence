@@ -25,27 +25,29 @@ with st.expander("👤 Register or Edit User", expanded=True):
     st.number_input("Age", min_value=0, key="edit_age")
     st.number_input("Annual Income ($)", min_value=0, key="edit_income")
 
+    # --- BUTTON LOGIC WITH UNIQUE KEYS ---
     if st.session_state.edit_id:
-        if st.button("Update Details ✅", type="primary"):
+        # We use a unique key 'update_btn' to avoid ID conflicts
+        if st.button("Update Details ✅", type="primary", key="update_btn"):
             conn = get_connection()
             c = conn.cursor()
-            # We pull values directly from session_state now
             c.execute("UPDATE users SET name=?, age=?, income=? WHERE id=?", 
                       (st.session_state.edit_name, st.session_state.edit_age, 
                        st.session_state.edit_income, st.session_state.edit_id))
             conn.commit()
             conn.close()
             
-            # Resetting these automatically clears the text boxes because of the 'key'
+            # Reset State
             st.session_state.edit_id = None
             st.session_state.edit_name = ""
             st.session_state.edit_age = 18
             st.session_state.edit_income = 0
             
-            st.success("Updated and Cleared!")
+            st.success("Record Updated!")
             st.rerun()
     else:
-        if st.button("Register User"):
+        # We use a unique key 'register_btn' to avoid ID conflicts
+        if st.button("Register User", key="register_btn"):
             if st.session_state.edit_name.strip() == "":
                 st.error("Please enter a name.")
             else:
@@ -57,10 +59,12 @@ with st.expander("👤 Register or Edit User", expanded=True):
                 conn.commit()
                 conn.close()
                 
-                # Clear for next user
+                # Clear State
                 st.session_state.edit_name = ""
                 st.session_state.edit_age = 18
                 st.session_state.edit_income = 0
+                
+                st.success("User Registered!")
                 st.rerun()
         else:
             if st.button("Register User"):
