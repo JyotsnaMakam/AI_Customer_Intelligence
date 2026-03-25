@@ -8,8 +8,7 @@ st.title("📝 User Registration & Management")
 def get_connection():
     return sqlite3.connect('data/customer_intelligence.db')
 
-# --- STEP 1: INITIALIZE SESSION STATE (MUST BE FIRST) ---
-# This prevents the "StreamlitAPIException" by ensuring keys exist before use
+# --- STEP 1: INITIALIZE SESSION STATE ---
 if 'edit_id' not in st.session_state:
     st.session_state.edit_id = None
 if 'edit_name' not in st.session_state:
@@ -21,25 +20,44 @@ if 'edit_income' not in st.session_state:
 
 # --- STEP 2: FORM UI ---
 with st.expander("👤 Register or Edit User", expanded=True):
-    # Using 'key' helps Streamlit manage the connection to session state better
-    name_input = st.text_input("Name", value=st.session_state.edit_name)
-    age_input = st.number_input("Age", min_value=0, value=st.session_state.edit_age)
-    income_input = st.number_input("Annual Income ($)", min_value=0, value=st.session_state.edit_income)
+    # CRITICAL: We use 'key' instead of 'value' to ensure two-way syncing
+    st.text_input("Name", key="edit_name")
+    st.number_input("Age", min_value=0, key="edit_age")
+    st.number_input("Annual Income ($)", min_value=0, key="edit_income")
 
-    col_btn1, col_btn2 = st.columns([1, 4])
-    
-    with col_btn1:
-        if st.session_state.edit_id:
-            if st.button("Update ✅", type="primary"):
+    if st.session_state.edit_id:
+        if st.button("Update Details ✅", type="primary"):
+            conn = get_connection()
+            c = conn.cursor()
+            # We pull values directly from session_state now
+            c.execute("UPDATE users SET name=?, age=?, income=? WHERE id=?", 
+                      (st.session_state.edit_name, st.session_state.edit_age, 
+                       st.session_state.edit_income, st.session_state.edit_id))
+            conn.commit()
+            conn.close()
+            
+            # Resetting these automatically clears the text boxes because of the 'key'
+            st.session_state.edit_id = None
+            st.session_state.edit_name = ""
+            st.session_state.edit_age = 18
+            st.session_state.edit_income = 0
+            
+            st.success("Updated and Cleared!")
+            st.rerun()
+    else:
+        if st.button("Register User"):
+            if st.session_state.edit_name.strip() == "":
+                st.error("Please enter a name.")
+            else:
                 conn = get_connection()
                 c = conn.cursor()
-                c.execute("UPDATE users SET name=?, age=?, income=? WHERE id=?", 
-                          (name_input, age_input, income_input, st.session_state.edit_id))
+                c.execute("INSERT INTO users (name, age, income) VALUES (?,?,?)", 
+                          (st.session_state.edit_name, st.session_state.edit_age, 
+                           st.session_state.edit_income))
                 conn.commit()
                 conn.close()
                 
-                # Reset and Rerun
-                st.session_state.edit_id = None
+                # Clear for next user
                 st.session_state.edit_name = ""
                 st.session_state.edit_age = 18
                 st.session_state.edit_income = 0
