@@ -18,10 +18,12 @@ if 'edit_income' not in st.session_state:
     st.session_state.edit_income = 0
 
 # --- FORM UI ---
+# --- FORM UI ---
 with st.expander("👤 Register or Edit User", expanded=True):
-    name_input = st.text_input("Name", value=st.session_state.edit_name)
-    age_input = st.number_input("Age", min_value=0, value=st.session_state.edit_age)
-    income_input = st.number_input("Annual Income ($)", min_value=0, value=st.session_state.edit_income)
+    # Adding 'key' here is the secret to making the boxes clear perfectly
+    name_input = st.text_input("Name", key="edit_name")
+    age_input = st.number_input("Age", min_value=0, key="edit_age")
+    income_input = st.number_input("Annual Income ($)", min_value=0, key="edit_income")
 
     if st.session_state.edit_id:
         if st.button("Update Details ✅", type="primary"):
@@ -32,14 +34,14 @@ with st.expander("👤 Register or Edit User", expanded=True):
             conn.commit()
             conn.close()
             
-            # --- RESET LOGIC ---
+            # Resetting the keys directly clears the text boxes
             st.session_state.edit_id = None
             st.session_state.edit_name = ""
             st.session_state.edit_age = 18
             st.session_state.edit_income = 0
             
             st.success("User updated and form cleared!")
-            st.rerun() # Forces the UI to refresh with empty values
+            st.rerun()
     else:
         if st.button("Register User"):
             conn = get_connection()
@@ -49,15 +51,13 @@ with st.expander("👤 Register or Edit User", expanded=True):
             conn.commit()
             conn.close()
             
-            # --- RESET LOGIC FOR NEW USER ---
-            st.session_state.edit_id = None
+            # Resetting for new user
             st.session_state.edit_name = ""
             st.session_state.edit_age = 18
             st.session_state.edit_income = 0
             
             st.success("New User Registered and Form Cleared!")
-            st.rerun() # Forces the UI to refresh with empty values
-
+            st.rerun()
 # --- DATABASE TABLE ---
 st.subheader("🔎 Search & Manage Database")
 search = st.text_input("Type a name to filter...")
