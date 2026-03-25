@@ -32,14 +32,14 @@ with st.expander("👤 Register or Edit User", expanded=True):
             conn.commit()
             conn.close()
             
-            # Reset State
+            # --- RESET LOGIC ---
             st.session_state.edit_id = None
             st.session_state.edit_name = ""
             st.session_state.edit_age = 18
             st.session_state.edit_income = 0
             
             st.success("User updated and form cleared!")
-            st.rerun()
+            st.rerun() # Forces the UI to refresh with empty values
     else:
         if st.button("Register User"):
             conn = get_connection()
@@ -49,15 +49,14 @@ with st.expander("👤 Register or Edit User", expanded=True):
             conn.commit()
             conn.close()
             
-            # --- THE RESET LOGIC FOR NEW REGISTRATION ---
-            # This clears the boxes immediately after the user is saved
+            # --- RESET LOGIC FOR NEW USER ---
             st.session_state.edit_id = None
             st.session_state.edit_name = ""
             st.session_state.edit_age = 18
             st.session_state.edit_income = 0
             
             st.success("New User Registered and Form Cleared!")
-            st.rerun()
+            st.rerun() # Forces the UI to refresh with empty values
 
 # --- DATABASE TABLE ---
 st.subheader("🔎 Search & Manage Database")
