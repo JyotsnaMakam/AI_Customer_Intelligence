@@ -2,12 +2,14 @@ import streamlit as st
 import sqlite3
 import pandas as pd
 
+st.set_page_config(page_title="Registration", layout="wide")
 st.title("📝 User Registration & Management")
 
 def get_connection():
     return sqlite3.connect('data/customer_intelligence.db')
 
-# --- SESSION STATE FOR EDITING ---
+# --- STEP 1: INITIALIZE SESSION STATE (MUST BE FIRST) ---
+# This prevents the "StreamlitAPIException" by ensuring keys exist before use
 if 'edit_id' not in st.session_state:
     st.session_state.edit_id = None
 if 'edit_name' not in st.session_state:
@@ -17,50 +19,48 @@ if 'edit_age' not in st.session_state:
 if 'edit_income' not in st.session_state:
     st.session_state.edit_income = 0
 
-# --- FORM UI ---
-# --- FORM UI ---
+# --- STEP 2: FORM UI ---
 with st.expander("👤 Register or Edit User", expanded=True):
-    # Adding 'key' here is the secret to making the boxes clear perfectly
-    name_input = st.text_input("Name", key="edit_name")
-    age_input = st.number_input("Age", min_value=0, key="edit_age")
-    income_input = st.number_input("Annual Income ($)", min_value=0, key="edit_income")
+    # Using 'key' helps Streamlit manage the connection to session state better
+    name_input = st.text_input("Name", value=st.session_state.edit_name)
+    age_input = st.number_input("Age", min_value=0, value=st.session_state.edit_age)
+    income_input = st.number_input("Annual Income ($)", min_value=0, value=st.session_state.edit_income)
 
-    if st.session_state.edit_id:
-        if st.button("Update Details ✅", type="primary"):
-            conn = get_connection()
-            c = conn.cursor()
-            c.execute("UPDATE users SET name=?, age=?, income=? WHERE id=?", 
-                      (name_input, age_input, income_input, st.session_state.edit_id))
-            conn.commit()
-            conn.close()
-            
-            # Resetting the keys directly clears the text boxes
-            st.session_state.edit_id = None
-            st.session_state.edit_name = ""
-            st.session_state.edit_age = 18
-            st.session_state.edit_income = 0
-            
-            st.success("User updated and form cleared!")
-            st.rerun()
-    else:
-        if st.button("Register User"):
-            conn = get_connection()
-            c = conn.cursor()
-            c.execute("INSERT INTO users (name, age, income) VALUES (?,?,?)", 
-                      (name_input, age_input, income_input))
-            conn.commit()
-            conn.close()
-            
-            # Resetting for new user
-            st.session_state.edit_name = ""
-            st.session_state.edit_age = 18
-            st.session_state.edit_income = 0
-            
-            st.success("New User Registered and Form Cleared!")
-            st.rerun()
-# --- DATABASE TABLE ---
-st.subheader("🔎 Search & Manage Database")
-search = st.text_input("Type a name to filter...")
+    col_btn1, col_btn2 = st.columns([1, 4])
+    
+    with col_btn1:
+        if st.session_state.edit_id:
+            if st.button("Update ✅", type="primary"):
+                conn = get_connection()
+                c = conn.cursor()
+                c.execute("UPDATE users SET name=?, age=?, income=? WHERE id=?", 
+                          (name_input, age_input, income_input, st.session_state.edit_id))
+                conn.commit()
+                conn.close()
+                
+                # Reset and Rerun
+                st.session_state.edit_id = None
+                st.session_state.edit_name = ""
+                st.session_state.edit_age = 18
+                st.session_state.edit_income = 0
+                st.rerun()
+        else:
+            if st.button("Register User"):
+                conn = get_connection()
+                c = conn.cursor()
+                c.execute("INSERT INTO users (name, age, income) VALUES (?,?,?)", (name_input, age_input, income_input))
+                conn.commit()
+                conn.close()
+                
+                # Clear form after registration
+                st.session_state.edit_name = ""
+                st.session_state.edit_age = 18
+                st.session_state.edit_income = 0
+                st.rerun()
+
+# --- STEP 3: SEARCH & TABLE ---
+st.subheader("🔎 Search Database")
+search = st.text_input("Filter by name...")
 
 conn = get_connection()
 query = "SELECT * FROM users"
@@ -69,7 +69,7 @@ if search:
 df = pd.read_sql_query(query, conn)
 conn.close()
 
-# HEADER ROW (6 columns to fit Delete button)
+# TABLE HEADERS
 h_cols = st.columns([1, 2, 1, 2, 1.5, 1.5])
 h_cols[0].markdown("**ID**")
 h_cols[1].markdown("**Name**")
@@ -86,7 +86,6 @@ for _, row in df.iterrows():
     r_cols[2].write(row['age'])
     r_cols[3].write(f"${row['income']:,}")
     
-    # EDIT BUTTON
     if r_cols[4].button("Edit 📝", key=f"edit_{row['id']}"):
         st.session_state.edit_id = row['id']
         st.session_state.edit_name = row['name']
@@ -94,12 +93,10 @@ for _, row in df.iterrows():
         st.session_state.edit_income = int(row['income'])
         st.rerun()
 
-    # DELETE BUTTON
     if r_cols[5].button("Del 🗑️", key=f"del_{row['id']}"):
         conn = get_connection()
         c = conn.cursor()
         c.execute("DELETE FROM users WHERE id=?", (row['id'],))
         conn.commit()
         conn.close()
-        st.warning(f"Deleted user {row['name']}")
         st.rerun()
