@@ -46,18 +46,24 @@ with st.expander("👤 Register or Edit User", expanded=True):
                 st.rerun()
         else:
             if st.button("Register User"):
+            # Validation: Only proceed if a name is actually typed in
+             if name_input.strip() == "":
+                st.error("Please enter a name before registering.")
+             else:
                 conn = get_connection()
                 c = conn.cursor()
-                c.execute("INSERT INTO users (name, age, income) VALUES (?,?,?)", (name_input, age_input, income_input))
+                c.execute("INSERT INTO users (name, age, income) VALUES (?,?,?)", 
+                          (name_input, age_input, income_input))
                 conn.commit()
                 conn.close()
                 
-                # Clear form after registration
+                # Clear form only after a successful registration
                 st.session_state.edit_name = ""
                 st.session_state.edit_age = 18
                 st.session_state.edit_income = 0
+                
+                st.success(f"Successfully registered {name_input}!")
                 st.rerun()
-
 # --- STEP 3: SEARCH & TABLE ---
 st.subheader("🔎 Search Database")
 search = st.text_input("Filter by name...")
