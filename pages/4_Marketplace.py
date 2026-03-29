@@ -60,11 +60,16 @@ st.info(f"**AI Analysis:** You are in the {segment_label} segment based on your 
 st.write("### 🎯 Recommended for Your Lifestyle:")
 cols = st.columns(3)
 
+# --- UPDATE IN 4_Marketplace.py ---
 for i, rec in enumerate(recommendations):
     with cols[i]:
         with st.container(border=True):
             st.write(f"**{rec['item']}**")
             st.caption(rec['desc'])
             st.markdown(f"**Price:** {rec['price']}")
+            
+            # This logic now saves the item and redirects
             if st.button(f"Buy {rec['item']}", key=f"buy_{i}"):
-                st.success(f"Added {rec['item']} to cart!")
+                st.session_state.selected_product = rec['item']
+                st.session_state.product_price = rec['price']
+                st.switch_page("pages/5_Payment.py") # Ensure the filename matches exactly                
