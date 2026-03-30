@@ -11,7 +11,7 @@ if 'payment_done' not in st.session_state:
 if "selected_product" not in st.session_state and not st.session_state.payment_done:
     st.warning("⚠️ Your cart is empty!")
     if st.button("Back to Marketplace"):
-        st.switch_page("4_Marketplace")
+        st.switch_page("pages/4_Marketplace.py")
     st.stop()
 
 st.title("💳 Secure Checkout")
