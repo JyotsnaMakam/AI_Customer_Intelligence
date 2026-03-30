@@ -25,7 +25,7 @@ if st.session_state.payment_done:
     # This button is now safe because it's OUTSIDE the form
     if st.button("Return to Home Dashboard"):
         st.session_state.payment_done = False # Reset for next time
-        st.switch_page("1_Registration")  # page 1 is the app home / dashboard in this app
+        st.switch_page("pages/1_Registration.py") # page 1 is the app home / dashboard in this app
     st.stop() # Stop the rest of the script from running
 
 # --- 3. SHOW PAYMENT FORM ---
